@@ -8,7 +8,14 @@ const int width = 10;
 int field[length][width] = {0};
 
 struct Point
-{ int x, y; } a[4], b[4];
+{
+    int x, y;
+};
+
+const int MAX_TILES_PER_BLOCK = 4;
+
+Point currentPosition[MAX_TILES_PER_BLOCK];
+Point lastPosition[MAX_TILES_PER_BLOCK];
 
 int figures[7][4] =
 {
@@ -23,13 +30,13 @@ int figures[7][4] =
 
 bool check()
 {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
     {
-        if (a[i].x < 0 || a[i].x >= width || a[i].y >= length)
+        if (currentPosition[i].x < 0 || currentPosition[i].x >= width || currentPosition[i].y >= length)
         {
             return 0;
         }
-        else if (field[a[i].y][a[i].x])
+        else if (field[currentPosition[i].y][currentPosition[i].x])
         {
             return 0;
         }
@@ -98,35 +105,35 @@ int tetris()
         }
 
         //// <- Move -> ////
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
         { 
-            b[i] = a[i]; 
-            a[i].x += speedX;
+            lastPosition[i] = currentPosition[i]; 
+            currentPosition[i].x += speedX;
         }
         if (!check())
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
             {
-                a[i] = b[i];
+                currentPosition[i] = lastPosition[i];
             }
         }
 
         //////Rotate//////
         if (rotate)
         {
-            Point p = a[1]; //center of rotation
-            for (int i=0;i<4;i++)
+            Point p = currentPosition[1]; //center of rotation
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
             {
-                int x = a[i].y-p.y;
-                int y = a[i].x-p.x;
-                a[i].x = p.x - x;
-                a[i].y = p.y + y;
+                int x = currentPosition[i].y-p.y;
+                int y = currentPosition[i].x-p.x;
+                currentPosition[i].x = p.x - x;
+                currentPosition[i].y = p.y + y;
             }
             if (!check())
             {
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
                 {
-                    a[i] = b[i];
+                    currentPosition[i] = lastPosition[i];
                 }
             }
         }
@@ -134,17 +141,17 @@ int tetris()
     ///////Tick//////
         if (timer > delay)
         {
-            for (int i=0;i<4;i++) 
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
             { 
-                b[i] = a[i];
-                a[i].y += 1;
+                lastPosition[i] = currentPosition[i];
+                currentPosition[i].y += 1;
             }
 
             if (!check())
             {
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
                 {
-                    field[b[i].y][b[i].x] = colorNum;
+                    field[lastPosition[i].y][lastPosition[i].x] = colorNum;
                 }
 
                 colorNum = 1 + rand() % 7;
@@ -152,8 +159,8 @@ int tetris()
 
                 for (int i=0;i<4;i++)
                 {
-                    a[i].x = figures[n][i] % 2;
-                    a[i].y = figures[n][i] / 2;
+                    currentPosition[i].x = figures[n][i] % 2;
+                    currentPosition[i].y = figures[n][i] / 2;
                 }    
             }
 
@@ -161,20 +168,20 @@ int tetris()
         }
 
     ///////check lines//////////
-        int k = length - 1;
+        int currentLine = length - 1;
         for (int i = length - 1; i > 0; i--)
         {
-            int count=0;
+            int count = 0;
             for (int j = 0; j < width; j++)
             {
                 if (field[i][j]) count++;
                 {
-                    field[k][j] = field[i][j];
+                    field[currentLine][j] = field[i][j];
                 }
             }
             if (count < width)
             {
-                k--;
+                currentLine--;
             }
         }
 
@@ -187,6 +194,7 @@ int tetris()
     window.draw(backgroundSprite);
           
     for (int i = 0; i < length; i++)
+    {
         for (int j = 0; j < width; j++)
         {
             if (field[i][j] == 0)
@@ -199,11 +207,12 @@ int tetris()
             tileSprite.move(28, 31); //offset
             window.draw(tileSprite);
         }
+    }
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
         {
             tileSprite.setTextureRect(IntRect(colorNum * 18, 0, 18, 18));
-            tileSprite.setPosition(a[i].x * 18, a[i].y * 18);
+            tileSprite.setPosition(currentPosition[i].x * 18, currentPosition[i].y * 18);
             tileSprite.move(28, 31); //offset
             window.draw(tileSprite);
         }
