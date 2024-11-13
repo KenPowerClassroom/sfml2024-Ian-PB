@@ -45,13 +45,131 @@ bool check()
    return 1;
 };
 
-
-int tetris()
+void move(int t_speedX)
 {
-    srand(time(0));     
+    for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+    {
+        lastPosition[i] = currentPosition[i];
+        currentPosition[i].x += t_speedX;
+    }
+    if (!check())
+    {
+        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+        {
+            currentPosition[i] = lastPosition[i];
+        }
+    }
+}
 
-    RenderWindow window(VideoMode(320, 480), "The Game!");
+void rotation(bool t_rotate)
+{
+    if (t_rotate)
+    {
+        Point p = currentPosition[1]; //center of rotation
 
+        for (int currentTile = 0; currentTile < MAX_TILES_PER_BLOCK; currentTile++)
+        {
+            int x = currentPosition[currentTile].y - p.y;
+            int y = currentPosition[currentTile].x - p.x;
+            currentPosition[currentTile].x = p.x - x;
+            currentPosition[currentTile].y = p.y + y;
+        }
+        if (!check()) // If the position is occupied:
+        {
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+            {
+                // Send to last possible position
+                currentPosition[i] = lastPosition[i];
+            }
+        }
+    }
+}
+
+void inputManager(RenderWindow& t_window, bool& t_rotate, int& t_speedX, float& t_delay)
+{
+    Event event;
+    while (t_window.pollEvent(event))
+    {
+        if (event.type == Event::Closed)
+            t_window.close();
+
+        if (event.type == Event::KeyPressed)
+        {
+            if (event.key.code == Keyboard::Up)
+            {
+                t_rotate = true;
+            }
+            else if (event.key.code == Keyboard::Left)
+            {
+                t_speedX = -1; // Move Left
+            }
+            else if (event.key.code == Keyboard::Right)
+            {
+                t_speedX = 1; // Move Right
+            }
+        }
+
+        if (Keyboard::isKeyPressed(Keyboard::Down))
+        {
+            t_delay = 0.05;
+        }
+    }
+}
+
+void tick(float& t_timer, float t_delay, int& t_colorNum)
+{
+    if (t_timer > t_delay)
+    {
+        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+        {
+            lastPosition[i] = currentPosition[i];
+            currentPosition[i].y += 1;
+        }
+
+        if (!check())
+        {
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+            {
+                field[lastPosition[i].y][lastPosition[i].x] = t_colorNum;
+            }
+
+            t_colorNum = 1 + rand() % 7;
+            int n = rand() % 7;
+
+            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+            {
+                currentPosition[i].x = figures[n][i] % 2;
+                currentPosition[i].y = figures[n][i] / 2;
+            }
+        }
+
+        t_timer = 0;
+    }
+}
+
+void checkLines()
+{
+    int currentLine = length - 1;
+    for (int i = length - 1; i > 0; i--)
+    {
+        int count = 0;
+        for (int j = 0; j < width; j++)
+        {
+            if (field[i][j]) count++;
+            {
+                field[currentLine][j] = field[i][j];
+            }
+        }
+        if (count < width)
+        {
+            currentLine--;
+        }
+    }
+}
+
+void draw(RenderWindow& t_window, int t_colorNum)
+{
+    // Setup each drawable object
     Texture tileTexture;
     Texture backgroundTexture;
     Texture frameTexture;
@@ -63,6 +181,44 @@ int tetris()
     Sprite tileSprite(tileTexture);
     Sprite backgroundSprite(backgroundTexture);
     Sprite frameSprite(frameTexture);
+
+    t_window.clear(Color::White);
+    t_window.draw(backgroundSprite);
+
+    for (int xCoord = 0; xCoord < length; xCoord++)
+    {
+        for (int yCoord = 0; yCoord < width; yCoord++)
+        {
+            if (field[xCoord][yCoord] == 0)
+            {
+                continue;
+            }
+
+            tileSprite.setTextureRect(IntRect(field[xCoord][yCoord] * 18, 0, 18, 18));
+            tileSprite.setPosition(yCoord * 18, xCoord * 18);
+            tileSprite.move(28, 31); //offset
+            t_window.draw(tileSprite);
+        }
+    }
+
+    for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
+    {
+        tileSprite.setTextureRect(IntRect(t_colorNum * 18, 0, 18, 18));
+        tileSprite.setPosition(currentPosition[i].x * 18, currentPosition[i].y * 18);
+        tileSprite.move(28, 31); //offset
+        t_window.draw(tileSprite);
+    }
+
+    t_window.draw(frameSprite);
+    t_window.display();
+}
+
+int tetris()
+{
+    srand(time(0));     
+
+    RenderWindow window(VideoMode(320, 480), "The Game!");
+
 
     int speedX = 0; 
     bool rotate = 0; 
@@ -78,147 +234,28 @@ int tetris()
         clock.restart();
         timer += time;
 
-        Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == Event::Closed)
-                window.close();
-
-            if (event.type == Event::KeyPressed)
-                if (event.key.code == Keyboard::Up)
-                {
-                    rotate = true;
-                }
-                else if (event.key.code == Keyboard::Left)
-                {
-                    speedX = -1;
-                }
-                else if (event.key.code == Keyboard::Right)
-                {
-                    speedX = 1;
-                }
-        }
-
-        if (Keyboard::isKeyPressed(Keyboard::Down))
-        {
-            delay = 0.05;
-        }
+        // Input manager
+        inputManager(window, rotate, speedX, delay);
 
         //// <- Move -> ////
-        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-        { 
-            lastPosition[i] = currentPosition[i]; 
-            currentPosition[i].x += speedX;
-        }
-        if (!check())
-        {
-            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-            {
-                currentPosition[i] = lastPosition[i];
-            }
-        }
+        move(speedX);
 
         //////Rotate//////
-        if (rotate)
-        {
-            Point p = currentPosition[1]; //center of rotation
-            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-            {
-                int x = currentPosition[i].y-p.y;
-                int y = currentPosition[i].x-p.x;
-                currentPosition[i].x = p.x - x;
-                currentPosition[i].y = p.y + y;
-            }
-            if (!check())
-            {
-                for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-                {
-                    currentPosition[i] = lastPosition[i];
-                }
-            }
-        }
+        rotation(rotate);
 
-    ///////Tick//////
-        if (timer > delay)
-        {
-            for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-            { 
-                lastPosition[i] = currentPosition[i];
-                currentPosition[i].y += 1;
-            }
+        ///////Tick//////
+        tick(timer, delay, colorNum);
 
-            if (!check())
-            {
-                for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-                {
-                    field[lastPosition[i].y][lastPosition[i].x] = colorNum;
-                }
+        ///////Check Lines//////////
+        checkLines();
 
-                colorNum = 1 + rand() % 7;
-                int n = rand() % 7;
-
-                for (int i=0;i<4;i++)
-                {
-                    currentPosition[i].x = figures[n][i] % 2;
-                    currentPosition[i].y = figures[n][i] / 2;
-                }    
-            }
-
-            timer = 0;
-        }
-
-    ///////check lines//////////
-        int currentLine = length - 1;
-        for (int i = length - 1; i > 0; i--)
-        {
-            int count = 0;
-            for (int j = 0; j < width; j++)
-            {
-                if (field[i][j]) count++;
-                {
-                    field[currentLine][j] = field[i][j];
-                }
-            }
-            if (count < width)
-            {
-                currentLine--;
-            }
-        }
-
+        // Reset values
         speedX = 0;
         rotate = 0;
         delay = 0.3;
 
-    /////////draw//////////
-    window.clear(Color::White);    
-    window.draw(backgroundSprite);
-          
-    for (int i = 0; i < length; i++)
-    {
-        for (int j = 0; j < width; j++)
-        {
-            if (field[i][j] == 0)
-            {
-                continue;
-            }
-
-            tileSprite.setTextureRect(IntRect(field[i][j] * 18, 0, 18, 18));
-            tileSprite.setPosition(j * 18, i * 18);
-            tileSprite.move(28, 31); //offset
-            window.draw(tileSprite);
-        }
-    }
-
-        for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-        {
-            tileSprite.setTextureRect(IntRect(colorNum * 18, 0, 18, 18));
-            tileSprite.setPosition(currentPosition[i].x * 18, currentPosition[i].y * 18);
-            tileSprite.move(28, 31); //offset
-            window.draw(tileSprite);
-        }
-
-        window.draw(frameSprite);
-        window.display();
+        /////////draw//////////
+        draw(window, colorNum);
     }
 
     return 0;
