@@ -1,21 +1,16 @@
 #include <SFML/Graphics.hpp>
 #include <time.h>
+
+#include "tetris.h"
+
 using namespace sf;
 
-const int length = 20;
-const int width = 10;
 
-int field[length][width] = {0};
 
-struct Point
-{
-    int x, y;
-};
 
-const int MAX_TILES_PER_BLOCK = 4;
 
-Point currentPosition[MAX_TILES_PER_BLOCK];
-Point lastPosition[MAX_TILES_PER_BLOCK];
+
+
 
 int figures[7][4] =
 {
@@ -28,22 +23,6 @@ int figures[7][4] =
     2, 3, 4, 5  // O
 };
 
-bool check()
-{
-    for (int i = 0; i < MAX_TILES_PER_BLOCK; i++)
-    {
-        if (currentPosition[i].x < 0 || currentPosition[i].x >= width || currentPosition[i].y >= length)
-        {
-            return 0;
-        }
-        else if (field[currentPosition[i].y][currentPosition[i].x])
-        {
-            return 0;
-        }
-    }
-
-   return 1;
-};
 
 void move(int t_speedX)
 {
